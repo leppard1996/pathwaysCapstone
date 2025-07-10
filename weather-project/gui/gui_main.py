@@ -54,6 +54,9 @@ class WeatherDashboard:
         result_frame = tk.Frame(self.root, bg=self.bg_color)
         result_frame.pack(pady=15)
 
+        self.loc_label = tk.Label(result_frame, text="Location: --", bg=self.bg_color, fg=self.text_color, font=('Arial', 12))
+        self.loc_label.pack(anchor="w", padx=10, pady=2)
+
         self.temp_label = tk.Label(result_frame, text="Temperature: --", bg=self.bg_color, fg=self.text_color, font=('Arial', 12))
         self.temp_label.pack(anchor="w", padx=10, pady=2)
 
@@ -83,6 +86,7 @@ class WeatherDashboard:
             humidity = data['main']['humidity']
             precip = data.get('rain', {}).get('1h', 0)
             condition = data['weather'][0]['description'].title()
+            city_name = data['name']
 
             if unit == "F":
                 display_temp = temp
@@ -93,6 +97,7 @@ class WeatherDashboard:
             self.humidity_label.config(text=f"Humidity: {humidity}%")
             self.precip_label.config(text=f"Precipitation: {precip} in")
             self.condition_label.config(text=f"Conditions: {condition}")
+            self.loc_label.config(text=f"Location: {city_name}")
 
         except ValueError as ve:
             messagebox.showerror("Invalid City", str(ve))
