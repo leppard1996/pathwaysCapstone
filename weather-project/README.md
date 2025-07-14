@@ -1,11 +1,11 @@
 # Weather Dashboard 🌤️
 
-An easy to use and intuitive weather dashboard built with Python and Tkinter that allows users to check current weather conditions for cities around the world!
+An easy to use and intuitive weather dashboard built with Python and Tkinter that allows users to check current weather conditions for different cities around the world!
 
 ## Installation 
 
 ### Prerequisites
-- Python 3.6 or higher
+- Python 3.6 or higher (I have 3.11.9)
 - Internet connection for API calls
 
 ### Setup Steps
