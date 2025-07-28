@@ -9,6 +9,7 @@ load_dotenv()
 
 API_KEY = os.getenv("apiKey")
 BASE_URL = os.getenv("weatherAPI")
+FORECAST_URL = os.getenv("forecastAPI")
 
 historyFile = os.path.join(os.path.dirname(__file__), "weather_history.txt") #use path to update weather_history.txt later
 
@@ -29,9 +30,8 @@ def fetch_current_weather(city):
 
     return response.json()
 
-def fetch_history(city, date):
-    """Fetch historical weather data from WeatherAPI. Date format: YYYY-MM-DD."""
-    url = f"{BASE_URL}/history.json?key={API_KEY}&q={city}&dt={date}"
+def fetch_history(city): #fetch weather data for a specific date
+    url = f"{BASE_URL}/history.json?key={API_KEY}&q={city}"
     response = requests.get(url)
     response.raise_for_status()
     return response.json()

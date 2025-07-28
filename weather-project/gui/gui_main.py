@@ -1,18 +1,20 @@
 import tkinter as tk
-from tkinter import ttk, messagebox
+from tkinter import ttk, messagebox, simpledialog
 from data.data import fetch_current_weather
 
 class WeatherDashboard:
     def __init__(self, root):
         self.root = root
         self.root.title("Weather Dashboard")
-        self.root.geometry("420x350")
+        self.root.geometry("500x550")
 
         self.latest_weather_data = None
         self.current_temp_f = None
 
         self.create_widgets()
-        self.update_display()
+        # self.update_display()
+        self.compare_button = None
+        self.compare_frame = None
 
     def create_widgets(self):
         self.bg_color = "#E6E6FA"
@@ -99,6 +101,14 @@ class WeatherDashboard:
             self.condition_label.config(text=f"Conditions: {condition}")
             self.loc_label.config(text=f"Location: {city_name}")
 
+            # Show compare button if not already there
+            if self.compare_button is None:
+                    self.compare_button = tk.Button(self.root, text="Compare City",
+                        command=self.compare_cities,
+                        bg=self.fg_color, fg="white", activebackground=self.fg_color)
+                    self.compare_button.pack(pady=5)
+
+
         except ValueError as ve:
             messagebox.showerror("Invalid City", str(ve))
         except Exception as e:
@@ -117,14 +127,68 @@ class WeatherDashboard:
 
     def clear_inputs(self):
         self.city_entry.delete(0, tk.END)
-        self.city_entry.insert(0, "New York")
+        self.city_entry.insert(0, "City Name")
         self.temp_unit.set("F")
         self.temp_label.config(text="Temperature: --")
         self.humidity_label.config(text="Humidity: --")
         self.precip_label.config(text="Precipitation: --")
         self.condition_label.config(text="Conditions: --")
+        self.loc_label.config(text="Location: --")
         self.latest_weather_data = None
         self.current_temp_f = None
+
+        # Hide compare button if exists
+        if self.compare_button:
+            self.compare_button.destroy()
+            self.compare_button = None
+
+        # Hide compare result if exists
+        if self.compare_frame:
+            self.compare_frame.destroy()
+            self.compare_frame = None
+
+
+    def compare_cities(self):
+        second_city = tk.simpledialog.askstring("Compare City", "Enter a second city to compare:")
+        if not second_city:
+            return
+
+        city1 = self.latest_weather_data['name']
+        if second_city.strip().lower() == city1.lower():
+            messagebox.showerror("Same City", "Please enter a different city to compare.")
+            return
+
+        try:
+            data = fetch_current_weather(second_city)
+            temp = data['main']['temp']
+            if self.temp_unit.get() == "C":
+                temp = (temp - 32) * 5 / 9
+            humidity = data['main']['humidity']
+            precip = data.get('rain', {}).get('1h', 0)
+            condition = data['weather'][0]['description'].title()
+            name = data['name']
+
+            # Hide old comparison frame if it exists
+            if self.compare_frame:
+                self.compare_frame.destroy()
+
+            self.compare_frame = tk.Frame(self.root, bg=self.bg_color)
+            self.compare_frame.pack(pady=5)
+
+            tk.Label(self.compare_frame, text=f"--- Compared With ---", font=('Arial', 12, 'bold'),
+                    bg=self.bg_color, fg=self.fg_color).pack()
+
+            tk.Label(self.compare_frame, text=f"Location: {name}", bg=self.bg_color, fg=self.text_color).pack()
+            tk.Label(self.compare_frame, text=f"Temperature: {round(temp, 1)}°{self.temp_unit.get()}",
+                    bg=self.bg_color, fg=self.text_color).pack()
+            tk.Label(self.compare_frame, text=f"Humidity: {humidity}%", bg=self.bg_color, fg=self.text_color).pack()
+            tk.Label(self.compare_frame, text=f"Precipitation: {precip} in", bg=self.bg_color, fg=self.text_color).pack()
+            tk.Label(self.compare_frame, text=f"Conditions: {condition}", bg=self.bg_color, fg=self.text_color).pack()
+
+        except Exception as e:
+            print(e)
+            messagebox.showerror("Error", "Unable to fetch data for the second city.")
+
 
 def main():
     root = tk.Tk()
