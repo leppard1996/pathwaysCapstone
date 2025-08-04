@@ -15,12 +15,13 @@ historyFile = os.path.join(os.path.dirname(__file__), "weather_history.txt") #us
 
 
 def fetch_current_weather(city):
+    # print(f"Fetching current weather for {city}...")  # Debug statement
     params = {
         "q": city,
         "appid": API_KEY,
         "units": "imperial"  # Always fetch in Fahrenheit
     }
-
+    print(f"Request parameters: {params}")  # Debug statement
     response = requests.get(BASE_URL, params=params)
 
     if response.status_code == 404:
