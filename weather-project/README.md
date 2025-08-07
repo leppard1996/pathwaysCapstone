@@ -108,7 +108,6 @@ This application uses the [OpenWeatherMap API](https://openweathermap.org/api):
 ## Future Enhancements 
 
 Potential improvements for future versions:
-- 5-day weather forecast
-- Weather maps integration
 - Weather alerts and notifications
+- Weather prediction
 

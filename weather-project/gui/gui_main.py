@@ -3,7 +3,7 @@ from tkinter import ttk, messagebox, simpledialog
 import datetime
 import json
 import os
-from data.data import fetch_current_weather
+from data.data import fetch_current_weather, export_history_to_csv, export_filtered_history_to_csv
 from features.theme import ThemeSelector
 from features.forecast import get_forecast, get_local_weather_emoji
 
@@ -225,6 +225,11 @@ class WeatherDashboard:
                       bg=self.fg_color, fg="white", activebackground=self.fg_color)
         theme_btn.pack(side=tk.LEFT, padx=5)
 
+        # CSV Export button
+        csv_btn = tk.Button(button_frame, text="Export CSV", command=self.export_csv_dialog,
+                           bg=self.fg_color, fg="white", activebackground=self.fg_color)
+        csv_btn.pack(side=tk.LEFT, padx=5)
+
         # Current weather display
         result_frame = tk.Frame(parent, bg=self.bg_color)
         result_frame.pack(pady=15, fill=tk.X)
@@ -417,6 +422,52 @@ class WeatherDashboard:
             import traceback
             traceback.print_exc()  # Print full stack trace for debugging
 
+    def save_weather_to_history(self, city, data):
+        """Save weather data to history cache with current date"""
+        import json
+        import os
+        from datetime import datetime
+        
+        current_date = datetime.now().strftime('%Y-%m-%d')
+        
+        # Use the same path as data.py - relative to the data.py file location
+        try:
+            # Import the historyFile path directly from data.py
+            from data.data import historyFile
+            
+            # Create the directory if it doesn't exist
+            os.makedirs(os.path.dirname(historyFile), exist_ok=True)
+            
+            entry = {
+                "city": city,
+                "date": current_date,
+                "data": data
+            }
+            
+            with open(historyFile, "a") as f:
+                f.write(json.dumps(entry) + "\n")
+                
+            print(f"Weather data saved for {city} on {current_date} to {historyFile}")
+        except Exception as e:
+            print(f"Error saving weather data to history: {e}")
+            # Fallback: try to save in data directory
+            try:
+                fallback_path = os.path.join("data", "weather_history.txt")
+                os.makedirs(os.path.dirname(fallback_path), exist_ok=True)
+                
+                entry = {
+                    "city": city,
+                    "date": current_date,
+                    "data": data
+                }
+                
+                with open(fallback_path, "a") as f:
+                    f.write(json.dumps(entry) + "\n")
+                    
+                print(f"Weather data saved for {city} on {current_date} to fallback path {fallback_path}")
+            except Exception as fallback_error:
+                print(f"Error saving to fallback path: {fallback_error}")
+
     def update_display(self):
         city = self.city_entry.get().strip()
         unit = self.temp_unit.get()
@@ -427,6 +478,9 @@ class WeatherDashboard:
 
         try:
             data = fetch_current_weather(city)
+
+            # Save to history cache automatically
+            self.save_weather_to_history(city, data)
 
             self.latest_weather_data = data
             temp = data['main']['temp']
@@ -463,6 +517,92 @@ class WeatherDashboard:
         except Exception as e:
             print(f"Unhandled error: {e}")
             messagebox.showerror("Error", "An unexpected error occurred while fetching weather data.")
+
+    def export_csv_dialog(self):
+        """Show dialog for CSV export options"""
+        export_window = tk.Toplevel(self.root)
+        export_window.title("Export Weather Data")
+        export_window.geometry("400x300")
+        export_window.configure(bg=self.bg_color)
+
+        # Title
+        tk.Label(export_window, text="Export Weather History to CSV", 
+                font=('Arial', 14, 'bold'), bg=self.bg_color, fg=self.text_color).pack(pady=10)
+
+        # Export options frame
+        options_frame = tk.Frame(export_window, bg=self.bg_color)
+        options_frame.pack(pady=10, padx=20, fill=tk.X)
+
+        # Temperature unit selection
+        unit_frame = tk.Frame(options_frame, bg=self.bg_color)
+        unit_frame.pack(fill=tk.X, pady=5)
+        tk.Label(unit_frame, text="Temperature Unit:", bg=self.bg_color, fg=self.text_color).pack(side=tk.LEFT)
+        
+        temp_unit_var = tk.StringVar(value="F")
+        tk.Radiobutton(unit_frame, text="Fahrenheit", variable=temp_unit_var, value="F", 
+                      bg=self.bg_color, fg=self.text_color, activebackground=self.bg_color).pack(side=tk.LEFT, padx=10)
+        tk.Radiobutton(unit_frame, text="Celsius", variable=temp_unit_var, value="C", 
+                      bg=self.bg_color, fg=self.text_color, activebackground=self.bg_color).pack(side=tk.LEFT)
+
+        # Filter options
+        filter_frame = tk.Frame(options_frame, bg=self.bg_color)
+        filter_frame.pack(fill=tk.X, pady=10)
+
+        tk.Label(filter_frame, text="Filter by City (optional):", bg=self.bg_color, fg=self.text_color).pack(anchor=tk.W)
+        city_filter_entry = tk.Entry(filter_frame, width=30)
+        city_filter_entry.pack(fill=tk.X, pady=2)
+
+        tk.Label(filter_frame, text="Filter by Date (YYYY-MM-DD, optional):", bg=self.bg_color, fg=self.text_color).pack(anchor=tk.W, pady=(10,0))
+        date_filter_entry = tk.Entry(filter_frame, width=30)
+        date_filter_entry.pack(fill=tk.X, pady=2)
+
+        # Buttons
+        button_frame = tk.Frame(export_window, bg=self.bg_color)
+        button_frame.pack(pady=20)
+
+        def export_all():
+            try:
+                temp_unit = temp_unit_var.get()
+                csv_path = export_history_to_csv(temp_unit=temp_unit)
+                if csv_path:
+                    messagebox.showinfo("Export Complete", f"Weather data exported successfully to:\n{os.path.basename(csv_path)}")
+                    export_window.destroy()
+                else:
+                    messagebox.showwarning("No Data", "No weather history found to export.")
+            except Exception as e:
+                messagebox.showerror("Export Error", f"Failed to export data: {str(e)}")
+
+        def export_filtered():
+            try:
+                temp_unit = temp_unit_var.get()
+                city_filter = city_filter_entry.get().strip() or None
+                date_filter = date_filter_entry.get().strip() or None
+                
+                if not city_filter and not date_filter:
+                    messagebox.showwarning("No Filter", "Please enter at least one filter (city or date) or use 'Export All Data'.")
+                    return
+                
+                csv_path = export_filtered_history_to_csv(
+                    city_filter=city_filter, 
+                    date_filter=date_filter, 
+                    temp_unit=temp_unit
+                )
+                if csv_path:
+                    messagebox.showinfo("Export Complete", f"Filtered weather data exported successfully to:\n{os.path.basename(csv_path)}")
+                    export_window.destroy()
+                else:
+                    messagebox.showwarning("No Data", "No matching weather history found to export.")
+            except Exception as e:
+                messagebox.showerror("Export Error", f"Failed to export filtered data: {str(e)}")
+
+        tk.Button(button_frame, text="Export All Data", command=export_all,
+                 bg=self.fg_color, fg="white", activebackground=self.fg_color).pack(side=tk.LEFT, padx=5)
+        
+        tk.Button(button_frame, text="Export Filtered", command=export_filtered,
+                 bg=self.fg_color, fg="white", activebackground=self.fg_color).pack(side=tk.LEFT, padx=5)
+        
+        tk.Button(button_frame, text="Cancel", command=export_window.destroy,
+                 bg=self.fg_color, fg="white", activebackground=self.fg_color).pack(side=tk.LEFT, padx=5)
 
     def temp_unit_update(self):
         if self.current_temp_f is not None:
@@ -516,6 +656,10 @@ class WeatherDashboard:
 
         try:
             data = fetch_current_weather(second_city)
+            
+            # Save comparison city to history as well
+            self.save_weather_to_history(second_city, data)
+            
             temp = data['main']['temp']
             if self.temp_unit.get() == "C":
                 temp = (temp - 32) * 5 / 9
@@ -551,7 +695,6 @@ class WeatherDashboard:
         theme_config = self.themes.get(theme)
         if not theme_config:
             # Fallback to superhero if theme not found
-            print(f"Theme '{theme}' not found, using superhero theme")
             theme = "superhero"
             theme_config = self.themes.get(theme)
 
